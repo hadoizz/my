@@ -1,0 +1,12 @@
+MODULES = jailed
+include $(THEOS)/makefiles/common.mk
+#TARGET = iphone:clang:12.1.2:8.0
+#ARCHS = armv7 arm64 arm64e
+TWEAK_NAME = SwitfCore
+SwitfCore_FILES = AdInject.xm
+SwitfCore_FRAMEWORKS = JavaScriptCore WebKit
+SwitfCore_CFLAGS = -fobjc-arc -I$(THEOS_PROJECT_DIR)/Headers
+SwitfCore_LDFLAGS += $(THEOS_PROJECT_DIR)/Frameworks/GoogleMobileAds
+SwitfCore_IPA = /Users/mac/Desktop/adinject/vhsorg.ipa
+CODESIGN_IPA=0
+include $(THEOS_MAKE_PATH)/tweak.mk
