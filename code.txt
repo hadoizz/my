@@ -1,0 +1,83 @@
+#import <GoogleMobileAds/GoogleMobileAds.h>
+
+//Settings
+#define APP_ID @"com.deezr.Deezer"
+#define AD_UNIT_ID @"ca-app-pub-1138146631099272/1719831380"
+#define SECONDS_BETWEEN_ADS 30.0
+
+%hook NSBundle
+
+- (id)objectForInfoDictionaryKey:(NSString*)key
+{
+	if([key isEqualToString:@"GADApplicationIdentifier"])
+	{
+		return APP_ID;
+	}
+
+	if([key isEqualToString:@"GADIsAdManagerApp"])
+	{
+		return @YES;
+	}
+
+	return %orig;
+}
+
+%end
+
+@interface UIViewController (GADInterstitialDelegate) <GADInterstitialDelegate>
+@end
+
+@interface UIViewController (Ads)
+@property (nonatomic, retain) GADInterstitial *interstitial;
+- (void)playAd;
+@end
+
+%hook UIViewController
+
+%property (nonatomic, retain) GADInterstitial *interstitial;
+
+%new
+- (void)playAd
+{
+	if(!self.interstitial)
+	{
+		self.interstitial = [[GADInterstitial alloc] initWithAdUnitID:AD_UNIT_ID];
+		self.interstitial.delegate = self;
+	}
+
+	GADRequest *request = [GADRequest request];
+	[self.interstitial loadRequest:request];
+}
+
+%new
+- (void)interstitialDidReceiveAd:(GADInterstitial*)ad
+{
+	[self.interstitial presentFromRootViewController:self];
+}
+
+%end
+
+static NSTimer* adTimer;
+
+void playAd()
+{
+	[[UIApplication sharedApplication].keyWindow.rootViewController playAd];
+}
+
+void appLoaded(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+	[[GADMobileAds sharedInstance] startWithCompletionHandler:^(GADInitializationStatus *_Nonnull status)
+	{
+		playAd();	//Play initial ad
+
+		adTimer = [NSTimer scheduledTimerWithTimeInterval:SECONDS_BETWEEN_ADS target:[NSBlockOperation blockOperationWithBlock:^
+		{
+			playAd();	//Repeat ad after time interval
+		}] selector:@selector(main) userInfo:nil repeats:YES];
+	}];
+}
+
+%ctor
+{
+	CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), NULL, appLoaded, (CFStringRef)UIApplicationDidFinishLaunchingNotification, NULL, CFNotificationSuspensionBehaviorCoalesce);
+}
